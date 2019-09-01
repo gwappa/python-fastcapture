@@ -7,7 +7,7 @@ import numpy as np
 import argparse
 import cv2
 
-DEFAULT_NFRAMES = 200*5
+DEFAULT_NFRAMES = 200*60*1
  
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -27,7 +27,7 @@ print("[INFO] source={source}, frames={num_frames}, display={display}, output={o
 
 # created a *threaded* video stream, allow the camera sensor to warmup,
 # and start the FPS counter
-print("[INFO] sampling THREADED frames from webcam...")
+print("[INFO] sampling THREADED frames from webcam ", end='', flush=True)
 vs     = WebcamVideoStream(src=args["source"]).start()
 frames = []
 fps    = FPS().start()
@@ -45,6 +45,8 @@ while fps._numFrames < args["num_frames"]:
  
     # update the FPS counter
     fps.update()
+    if fps._numFrames % 100 == 99:
+        print(".", end=" " if fps._numFrames % 1000 == 999 else "", flush=True)
  
 # stop the timer and display FPS information
 fps.stop()

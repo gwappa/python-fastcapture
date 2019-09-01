@@ -13,7 +13,7 @@ we have tested the script only on the linux computer (Ubuntu 18.04). the source 
 
 ## usage
 
-run `python fastcapture --help` to see the usage.
+run `python fastcapture.py --help` to see the usage.
 
 ## license
 
