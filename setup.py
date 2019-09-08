@@ -18,7 +18,7 @@ setuptools.setup(
     packages=['fastcapture',],
     entry_points={
         'console_scripts': [
-            'fastcapture=fastcapture.__init__:run'
+            'fastcapture=fastcapture.__init__:main'
         ]
     }
 )

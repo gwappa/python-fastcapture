@@ -23,6 +23,5 @@
 #
 
 if __name__ == '__main__':
-    from . import ap, run
-    args = vars(ap.parse_args())
-    run(**args)
+    from . import main
+    main()

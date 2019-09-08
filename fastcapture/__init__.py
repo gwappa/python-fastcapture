@@ -49,10 +49,15 @@ ap.add_argument("-r", "--output-rate", type=float, default=DEFAULT_RATE,
     help="the frame rate of the output video (nothing to do with the acquisition rate)")
 ap.add_argument("-q", "--nodisplay", dest="display", action='store_false',
 	help="suppress the frames to be displayed on-line")
+ap.add_argument("-x", "--nosave", dest="saved", action="store_false",
+        help="supress the frames to be stored.")
+
+def main():
+    run(**vars(ap.parse_args()))
 
 def run(source=DEFAULT_SOURCE, output=DEFAULT_OUTPUT,
         num_frames=DEFAULT_NFRAMES, output_rate=DEFAULT_RATE,
-        display=True):
+        display=True, saved=True):
     print(f"[INFO] source={source}, frames={num_frames}, display={display}, output={output}")
 
     # created a *threaded* video stream, allow the camera sensor to warmup,
@@ -71,7 +76,10 @@ def run(source=DEFAULT_SOURCE, output=DEFAULT_OUTPUT,
         if display == True:
             cv2.imshow("Frame", frame)
             key = cv2.waitKey(1) & 0xFF
-        frames.append(np.array(frame))
+            if key < 255:
+                break
+        if saved == True:
+            frames.append(np.array(frame))
 
         # update the FPS counter
         fps.update()
@@ -81,21 +89,22 @@ def run(source=DEFAULT_SOURCE, output=DEFAULT_OUTPUT,
     # stop the timer and display FPS information
     fps.stop()
     vs.stop()
-    height, width = frames[-1].shape[:2]
 
     print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
     print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 
-    path   = Path(output).with_suffix(".avi")
-    fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
-    writer = cv2.VideoWriter(str(path), fourcc, output_rate, (width, height))
-    print(f"[INFO] writing at frame rate {output_rate:.1f}", end='', flush=True)
-    for i, frame in enumerate(frames):
-        writer.write(frame)
-        if i % 100 == 99:
-            print(".", end=" " if i % 1000 == 999 else "", flush=True)
-    writer.release()
-    print(f"done (-> {path}).")
+    if saved == True:
+        height, width = frames[-1].shape[:2]
+        path   = Path(output).with_suffix(".avi")
+        fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
+        writer = cv2.VideoWriter(str(path), fourcc, output_rate, (width, height))
+        print(f"[INFO] writing at frame rate {output_rate:.1f}", end='', flush=True)
+        for i, frame in enumerate(frames):
+            writer.write(frame)
+            if i % 100 == 99:
+                print(".", end=" " if i % 1000 == 999 else "", flush=True)
+        writer.release()
+        print(f"done (-> {path}).")
 
     # do a bit of cleanup
     vs.stream.release()
