@@ -29,13 +29,20 @@ from imutils.video import FPS
 import numpy as np
 import argparse
 import cv2
+import subprocess as sp
 
-VERSION_STR = "1.0a1"
 
-DEFAULT_SOURCE  = "/dev/video0"
-DEFAULT_OUTPUT  = "out.avi"
-DEFAULT_NFRAMES = 200*60*1
-DEFAULT_RATE    = 200.0
+AUTO_EXPOSURE_OFF = 0.25
+AUTO_EXPOSURE_ON  = 0.75
+
+VERSION_STR = "1.0a2"
+
+DEFAULT_SOURCE   = "/dev/video0"
+DEFAULT_OUTPUT   = "local/out.avi"
+DEFAULT_NFRAMES  = 200*60*2
+DEFAULT_RATE     = 200.0
+DEFAULT_EXPOSURE = 500
+DEFAULT_MAX_EXP  = 30000000
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -47,6 +54,8 @@ ap.add_argument("-n", "--num-frames", type=int, default=DEFAULT_NFRAMES,
 	help="# of frames to loop over for FPS test")
 ap.add_argument("-r", "--output-rate", type=float, default=DEFAULT_RATE,
     help="the frame rate of the output video (nothing to do with the acquisition rate)")
+ap.add_argument("-u", "--exposure-us", type=int, default=DEFAULT_EXPOSURE,
+        help="the exposure time in microseconds.")
 ap.add_argument("-q", "--nodisplay", dest="display", action='store_false',
 	help="suppress the frames to be displayed on-line")
 ap.add_argument("-x", "--nosave", dest="saved", action="store_false",
@@ -56,21 +65,29 @@ def main():
     run(**vars(ap.parse_args()))
 
 def run(source=DEFAULT_SOURCE, output=DEFAULT_OUTPUT,
+        exposure_us=DEFAULT_EXPOSURE, max_exposure_us=DEFAULT_MAX_EXP,
         num_frames=DEFAULT_NFRAMES, output_rate=DEFAULT_RATE,
         display=True, saved=True):
-    print(f"[INFO] source={source}, frames={num_frames}, display={display}, output={output}")
+    print(f"[INFO]  source={source}, frames={num_frames}, display={display}, output={output}")
 
+    # currently I cannot deal with auto-gain through OpenCV...
+    sp.run(f"v4l2-ctl -d {source} -c gain_auto=0", check=True, shell=True)
+    
     # created a *threaded* video stream, allow the camera sensor to warmup,
     # and start the FPS counter
-    print("[INFO] sampling THREADED frames from webcam ", end='', flush=True)
-    vs     = WebcamVideoStream(src=source).start()
+    vs     = WebcamVideoStream(src=source)
+    vs.stream.set(cv2.CAP_PROP_AUTO_EXPOSURE, AUTO_EXPOSURE_OFF)
+    vs.stream.set(cv2.CAP_PROP_EXPOSURE,      exposure_us / max_exposure_us)
+    print("[DEBUG] OpenCV exposure value: ", vs.stream.get(cv2.CAP_PROP_EXPOSURE))
+    print("[INFO]  sampling THREADED frames from webcam ", end='', flush=True)
+    vs.start()
     frames = []
     fps    = FPS().start()
 
     # loop over some frames...this time using the threaded stream
     while fps._numFrames < num_frames:
         # grab the frame from the threaded video stream
-        frame = vs.read()
+        frame = vs.read()[1]
 
         # check to see if the frame should be displayed to our screen
         if display == True:
